@@ -2,8 +2,7 @@
 
 A Streamlit-based web application that uses Deep Learning (CNN) to automatically categorize municipal complaints (e.g., "Pothole", "No Water", "Garbage") and assign them to the correct department with a priority level.
 
-![App Screenshot](https://raw.githubusercontent.com/YOUR_USERNAME/REPO_NAME/main/screenshots/app_preview.png)
-*(Note: Replace with actual screenshot link after upload)*
+![App Screenshot](/home/mahesh/Documents/Municipal_Corporation_CNN/app_preview.png)
 
 ## 🚀 Features
 
