@@ -1,0 +1,38 @@
+# Core ML
+tensorflow>=2.13.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+snscrape>=0.7.0
+
+# PDF processing
+pdfplumber>=0.10.0
+pymupdf>=1.23.0
+
+# NLP & Data
+langdetect>=1.0.9
+regex>=2023.10.3
+tqdm>=4.66.0
+jsonlines>=4.0.0
+
+# Deduplication
+datasketch>=1.6.4
+
+# RAG
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+
+# Tokenizer (abctokz — install separately via pip install -e ./abctokz_repo)
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+httpx>=0.25.0

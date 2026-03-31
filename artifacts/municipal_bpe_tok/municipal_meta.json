@@ -1,0 +1,20 @@
+{
+  "vocab_size": 10000,
+  "model_type": "bpe",
+  "max_len": 60,
+  "special_tokens": [
+    "<PAD>",
+    "<UNK>",
+    "<BOS>",
+    "<EOS>",
+    "<MASK>",
+    "<DEPT>",
+    "<WARD>",
+    "<ZONE>",
+    "<PHONE>",
+    "<EMAIL>",
+    "<URL>",
+    "<AADHAAR>",
+    "<PINCODE>"
+  ]
+}

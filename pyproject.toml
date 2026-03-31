@@ -1,0 +1,32 @@
+[project]
+name = "municipal-mlm"
+version = "0.1.0"
+description = "Municipal Corporation Micro Language Model + RAG Hybrid System"
+requires-python = ">=3.10"
+
+dependencies = [
+    # ML core — CPU build (no CUDA downloads)
+    "tensorflow-cpu>=2.13.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scikit-learn>=1.3.0",
+    # Scraping (needed later)
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    # PDF
+    "pdfplumber>=0.10.0",
+    # NLP utils
+    "langdetect>=1.0.9",
+    "tqdm>=4.66.0",
+    # Dedup
+    "datasketch>=1.6.4",
+    # Utils
+    "python-dotenv>=1.0.0",
+]
+
+
+[tool.uv.sources]
+abctokz = { path = "abctokz_repo", editable = true }
+
+

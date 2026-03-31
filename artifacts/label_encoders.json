@@ -1,0 +1,42 @@
+{
+  "department": {
+    "label2idx": {
+      "disaster_management": 0,
+      "electricity": 1,
+      "health": 2,
+      "parks": 3,
+      "revenue": 4,
+      "roads": 5,
+      "sewerage": 6,
+      "solid_waste": 7,
+      "water_supply": 8
+    },
+    "idx2label": {
+      "0": "disaster_management",
+      "1": "electricity",
+      "2": "health",
+      "3": "parks",
+      "4": "revenue",
+      "5": "roads",
+      "6": "sewerage",
+      "7": "solid_waste",
+      "8": "water_supply"
+    }
+  },
+  "intent": {
+    "label2idx": {
+      "complaint": 0,
+      "emergency": 1,
+      "query": 2,
+      "service_request": 3,
+      "status_check": 4
+    },
+    "idx2label": {
+      "0": "complaint",
+      "1": "emergency",
+      "2": "query",
+      "3": "service_request",
+      "4": "status_check"
+    }
+  }
+}

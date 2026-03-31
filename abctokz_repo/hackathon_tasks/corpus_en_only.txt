@@ -1,0 +1,4 @@
+The quick brown fox jumps over the lazy dog.
+Hello world, tokenization is fun.
+Python is a great programming language.
+NLP stands for Natural Language Processing.

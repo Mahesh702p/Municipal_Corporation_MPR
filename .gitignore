@@ -1,0 +1,39 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ─── Virtual Environments ─────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+
+# ─── Trained Model Artifacts ────────────────────────────
+# All files are <6MB, well within GitHub's 100MB limit
+# artifacts/ is fully tracked
+
+# ─── Logs & Temp Files ────────────────────────────────────
+*.log
+*.log.*
+
+# ─── IDE & OS ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
+
+# ─── Large Zip Files ──────────────────────────────────────
+*.zip
+
+# ─── Jupyter ──────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+data/raw/kaggle/*.csv
