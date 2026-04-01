@@ -1,0 +1,9 @@
+Test Retrieval Results:
+Score: 0.5033833592966577
+Q: Documents required for birth certificate?
+A: Birth Certificate application documents: 1. Hospital discharge summary / birth report (from hospital where birth occurred). 2. Parents' ID proof (Aadhaar, PAN, Voter ID). 3. Parents' address proof. 4. Marriage certificate of parents. 5. Form No. 1 (Birth Registration Form) — available at ward office. Registration must be done within 21 days of birth. After 21 days: additional affidavit required. After 1 year: court order needed. Fee: Free within 21 days. ₹50 after 21 days.
+---
+Score: 0.30922244941845767
+Q: How to correct a birth certificate?
+A: To correct errors in birth certificate: Submit application at ward office with: Original certificate, Affidavit stating the error and correct information, Documentary proof of correct information (hospital records, school records). Fee: ₹100. Processing time: 15–30 working days. For name addition after 1 year: magistrate affidavit required.
+---

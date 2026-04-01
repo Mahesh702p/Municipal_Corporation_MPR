@@ -74,14 +74,22 @@ class MunicipalRetriever:
     # Build index
     # ──────────────────────────────────────
     def build_index(self, chunks_path: str):
-        """Load FAQ chunks and build TF-IDF index."""
+        """Load FAQ and/or PDF chunks and build TF-IDF index."""
         self.chunks = []
-        with open(chunks_path, encoding="utf-8") as f:
-            for line in f:
-                if line.strip():
-                    self.chunks.append(json.loads(line))
+        
+        # If directory, read all .jsonl files in it. Otherwise, read the single file.
+        if os.path.isdir(chunks_path):
+            files_to_read = [os.path.join(chunks_path, f) for f in os.listdir(chunks_path) if f.endswith('.jsonl')]
+        else:
+            files_to_read = [chunks_path]
+            
+        for file_path in files_to_read:
+            with open(file_path, encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        self.chunks.append(json.loads(line))
 
-        print(f"[RAG] Building index on {len(self.chunks)} chunks...")
+        print(f"[RAG] Building index on {len(self.chunks)} chunks from {len(files_to_read)} file(s)...")
 
         corpus = [self._text_for_indexing(c) for c in self.chunks]
 
@@ -174,7 +182,7 @@ class MunicipalRetriever:
 if __name__ == "__main__":
     # Build and test
     ret = MunicipalRetriever()
-    ret.build_index("data/rag/faq_chunks.jsonl")
+    ret.build_index("data/rag")
     ret.save("artifacts/rag_index")
 
     test_queries = [

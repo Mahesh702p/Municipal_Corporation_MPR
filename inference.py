@@ -248,6 +248,21 @@ class MunicipalInferenceEngine:
         # ── Level 1: Intent Detection ───────────────────────
         intent, intent_conf = self._predict_intent(text)
 
+        # ── Rule-Based Override for Questions ────────────────
+        text_lower = text.lower()
+        question_starters = ["what ", "how ", "where ", "who ", "why ", "when "]
+        informational_phrases = ["what is", "how to", "process for", "details about", "info about", "information", "tell me"]
+        
+        is_question = (
+            any(text_lower.startswith(q) for q in question_starters) or 
+            any(phrase in text_lower for phrase in informational_phrases) or
+            text_lower.endswith("?")
+        )
+        
+        if is_question and intent not in ["emergency", "status_check"]:
+            intent = "query"
+            intent_conf = 1.0  # Hardcoded confidence for rule-based match
+
         # ── Route by intent ─────────────────────────────────
 
         # EMERGENCY — fast path, skip Level 2
