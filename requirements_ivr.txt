@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+twilio
+faster-whisper
+gTTS
+requests
+python-multipart

@@ -43,7 +43,7 @@ sys.path.insert(0, str(ROOT / "abctokz_repo" / "src"))
 sys.path.insert(0, str(ROOT))
 
 # ── Data & artifacts paths ──────────────────────────────────
-DATA_PATH = str(ROOT / "data" / "processed" / "complaints_labeled.csv")
+DATA_PATH = str(ROOT / "data" / "processed" / "complaints_robust.csv")
 CORPUS_PATH = str(ROOT / "data" / "processed" / "pretrain_corpus.txt")
 TOK_PATH = str(ROOT / "artifacts" / "municipal_bpe_tok")
 ARTIFACTS_DIR = str(ROOT / "artifacts")

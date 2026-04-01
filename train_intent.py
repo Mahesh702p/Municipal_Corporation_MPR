@@ -38,7 +38,7 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT / "abctokz_repo" / "src"))
 sys.path.insert(0, str(ROOT))
 
-DATA_PATH = str(ROOT / "data" / "processed" / "complaints_labeled.csv")
+DATA_PATH = str(ROOT / "data" / "processed" / "complaints_robust.csv")
 TOK_PATH = str(ROOT / "artifacts" / "municipal_bpe_tok")
 SAVE_PATH = str(ROOT / "artifacts" / "intent_model")
 LABEL_ENC_PATH = str(ROOT / "artifacts" / "label_encoders.json")
