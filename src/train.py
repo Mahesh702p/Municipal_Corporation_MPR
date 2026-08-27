@@ -47,9 +47,10 @@ CONFIG = {
     "spatial_dropout": 0.4,
     "l2_reg": 0.01,
     "batch_size": 16,
-    "epochs": 30,
+    "epochs": 25,
     "learning_rate": 0.0005,
     "test_size": 0.2,
+    "sample_size": 5000,
 }
 
 
@@ -61,18 +62,29 @@ def main():
     # Load data
     print("\n📥 Loading dataset...")
     df = pd.read_csv(CONFIG["data_path"])
-    print(f"Total samples: {len(df)}")
-    print(f"Categories: {df['category'].unique().tolist()}")
+    
+    # Use text and department column
+    text_col = "text" if "text" in df.columns else "clean_text"
+    label_col = "department" if "department" in df.columns else "category"
+    
+    df = df.dropna(subset=[text_col, label_col])
+    
+    # Sample if dataset is large for rapid training
+    if len(df) > CONFIG["sample_size"]:
+        df = df.sample(n=CONFIG["sample_size"], random_state=42).reset_index(drop=True)
+
+    print(f"Total training samples: {len(df)}")
+    print(f"Departments/Categories: {df[label_col].unique().tolist()}")
     
     # Encode labels
     label_encoder = LabelEncoder()
-    y = label_encoder.fit_transform(df["category"])
+    y = label_encoder.fit_transform(df[label_col])
     num_classes = len(label_encoder.classes_)
     
     # Tokenize
     tokenizer = Tokenizer(num_words=CONFIG["max_vocab_size"], oov_token="<OOV>")
-    tokenizer.fit_on_texts(df["clean_text"])
-    sequences = tokenizer.texts_to_sequences(df["clean_text"])
+    tokenizer.fit_on_texts(df[text_col].astype(str))
+    sequences = tokenizer.texts_to_sequences(df[text_col].astype(str))
     X = pad_sequences(sequences, maxlen=CONFIG["max_sequence_length"], padding="post")
     
     vocab_size = min(len(tokenizer.word_index) + 1, CONFIG["max_vocab_size"])
