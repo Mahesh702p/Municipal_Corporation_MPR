@@ -54,6 +54,13 @@ SAMPLE_COMPLAINTS = {
     "🗑️ Overflowing Garbage": "Community dustbin at Sector 3 is overflowing with uncollected household waste and foul smell."
 }
 
+# Common Hinglish / Transliterated Indian keywords to preserve
+HINGLISH_KEYWORDS = [
+    "paani", "pani", "ghar", "bijli", "sadak", "kachra", "naali", "gadda", 
+    "safai", "dino", "aaraha", "araha", "aa", "raha", "me", "se", "nai", 
+    "nhi", "kaafi", "bhi", "bohot", "bahut", "gali", "mora", "pani", "light"
+]
+
 # Custom Premium Styling
 st.markdown("""
 <style>
@@ -195,25 +202,51 @@ def clean_text(text):
     return text.strip()
 
 
+def edit_distance(s1, s2):
+    """Calculate Levenshtein distance between two strings."""
+    if len(s1) < len(s2):
+        return edit_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+
 def correct_spelling(text):
-    """Spell correction with 3+ repeated char reduction."""
+    """Spell correction with Hinglish protection & distance constraints."""
     spell = SpellChecker()
-    # Reduce 3 or more repeated characters to max 2 (e.g., "gaaarbbbage" -> "garbage")
+    spell.word_frequency.load_words(HINGLISH_KEYWORDS)
+    
+    # Reduce 3 or more repeated characters (e.g., "paaaani" -> "paani", "heeeelp" -> "help")
     text_reduced = re.sub(r'(.)\1{2,}', r'\1', text)
     
     words = text_reduced.split()
     corrected_words = []
     
     for word in words:
-        # Keep punctuation intact for lookup
-        clean_w = re.sub(r'[^a-z0-9]', '', word)
-        if len(clean_w) > 2:
-            corrected = spell.correction(clean_w)
-            if corrected and corrected != clean_w:
-                # Replace root while preserving surrounding symbols if any
-                corrected_words.append(word.replace(clean_w, corrected))
-            else:
+        clean_w = re.sub(r'[^a-z0-9]', '', word.lower())
+        if len(clean_w) > 3:
+            # If word is known in English or Hinglish dictionary, keep it as is
+            if clean_w in spell.known([clean_w]):
                 corrected_words.append(word)
+            else:
+                candidate = spell.correction(clean_w)
+                if candidate and candidate != clean_w:
+                    # Strict distance check (max 1 edit) to prevent mangling transliterated words
+                    if edit_distance(clean_w, candidate) <= 1:
+                        corrected_words.append(word.replace(clean_w, candidate))
+                    else:
+                        corrected_words.append(word)
+                else:
+                    corrected_words.append(word)
         else:
             corrected_words.append(word)
             
@@ -271,9 +304,15 @@ def main():
             complaint_input = st.text_area(
                 "Enter Complaint Description:",
                 value=default_text,
-                height=140,
+                height=130,
                 placeholder="Describe the issue in detail (e.g. Heavy water leakage near Shastri Nagar market, road is flooded...)"
             )
+
+            st.caption("💡 **Tip**: *For optimal accuracy, enter complaints in English (e.g. 'no water supply for 3 days', 'huge pothole on main road'). Hinglish words like 'paani', 'ghar', 'bijli' are safely preserved.*")
+
+            c_chk, c_empty = st.columns([1.2, 0.8])
+            with c_chk:
+                enable_spellcheck = st.checkbox("✨ Enable Smart Typo Correction", value=True)
 
             c_btn1, c_btn2 = st.columns([1, 1])
             with c_btn1:
@@ -288,9 +327,12 @@ def main():
             if classify_clicked and complaint_input.strip():
                 with st.spinner("Processing NLP pipeline & 1D CNN Inference..."):
                     # 1. Spell Check & Cleaning
-                    corrected_text = correct_spelling(complaint_input)
-                    has_spelling_diff = corrected_text.lower() != complaint_input.lower()
-                    
+                    if enable_spellcheck:
+                        corrected_text = correct_spelling(complaint_input)
+                    else:
+                        corrected_text = complaint_input
+
+                    has_spelling_diff = corrected_text.strip().lower() != complaint_input.strip().lower()
                     cleaned = clean_text(corrected_text)
                     
                     # 2. Tokenize & Pad
@@ -315,7 +357,7 @@ def main():
 
                     # Display Spell Correction Notice if any
                     if has_spelling_diff:
-                        st.info(f"✨ **Smart Spell Correction Applied:**\n*{corrected_text}*")
+                        st.info(f"✨ **Smart Typo Correction Applied:**\n*{corrected_text}*")
 
                     # Display Metric Cards
                     m1, m2, m3 = st.columns(3)
@@ -364,7 +406,7 @@ def main():
                         "ticket_id": ticket_number,
                         "timestamp": timestamp_str,
                         "complaint_text": complaint_input,
-                        "corrected_text": corrected_text,
+                        "processed_text": corrected_text,
                         "category": category_name,
                         "department": info["department"],
                         "priority": info["priority"],
@@ -464,7 +506,7 @@ def main():
         
         ### NLP Preprocessing Pipeline
         1. **Character Run Reduction**: Reduces 3+ consecutive duplicate characters to handle typos (e.g. `gaaarbbbage` → `garbage`).
-        2. **SymSpell / PySpellChecker**: Maps misspelled tokens to the nearest valid dictionary word.
+        2. **Hinglish & Vocabulary Protection**: Preserves transliterated keywords (`paani`, `ghar`, `bijli`, `sadak`, `naali`) and enforces a max edit distance of 1 to prevent word corruption.
         3. **Normalization**: Lowercase conversion, non-alphanumeric character stripping.
         4. **Tokenization & Padding**: Text sequences padded/truncated to `max_sequence_length = 60`.
         """)
