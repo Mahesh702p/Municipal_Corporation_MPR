@@ -5,9 +5,18 @@ Classifies municipal complaints and returns department, category, and priority.
 """
 
 import os
+import warnings
+
+# Suppress TensorFlow & Scikit-Learn warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+warnings.filterwarnings('ignore')
+
 import re
 import numpy as np
 import joblib
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
@@ -51,7 +60,7 @@ def predict(complaint_text):
         complaint_text: The complaint text to classify
         
     Returns:
-        dict with department, category, priority, and confidence
+        dict with department, category, priority, confidence, and class_probabilities
     """
     # Preprocess
     cleaned = clean_text(complaint_text)
@@ -60,19 +69,26 @@ def predict(complaint_text):
                           padding="post", truncating="post")
     
     # Predict
-    prediction = model.predict(padded, verbose=0)
-    predicted_class = np.argmax(prediction, axis=1)[0]
-    confidence = float(np.max(prediction))
+    prediction = model.predict(padded, verbose=0)[0]
+    predicted_class = np.argmax(prediction)
+    confidence = float(prediction[predicted_class])
     
     # Get category and info
     category = label_encoder.inverse_transform([predicted_class])[0]
     info = CATEGORY_INFO.get(category, {"department": "Unknown", "priority": "Unknown"})
     
+    # Probabilities for all classes
+    class_probs = {
+        cls: round(float(prob) * 100, 2)
+        for cls, prob in zip(label_encoder.classes_, prediction)
+    }
+    
     return {
         "category": category,
         "department": info["department"],
         "priority": info["priority"],
-        "confidence": round(confidence * 100, 2)
+        "confidence": round(confidence * 100, 2),
+        "probabilities": class_probs
     }
 
 

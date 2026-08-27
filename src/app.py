@@ -1,39 +1,172 @@
 import streamlit as st
 import os
+import sys
+import warnings
 
 # Suppress TensorFlow logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+warnings.filterwarnings('ignore')
 
 import re
-from spellchecker import SpellChecker
+import random
+import datetime
+import json
 import numpy as np
+import pandas as pd
 import joblib
-from tensorflow.keras.models import load_model, Sequential
+from spellchecker import SpellChecker
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')
+
+from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 # Page config
 st.set_page_config(
-    page_title="Municipal Complaint Classifier",
-    layout="centered"
+    page_title="Municipal Complaint Classifier & Routing System",
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Constants & Paths
+# Paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 MODELS_DIR = os.path.join(PROJECT_DIR, "models")
+DATA_DIR = os.path.join(PROJECT_DIR, "data")
+ARCH_IMAGE_PATH = os.path.join(PROJECT_DIR, "architecture_diagram.png")
 
 CATEGORY_INFO = {
-    "Leakage": {"department": "Water Supply", "priority": "High"},
-    "Shortage": {"department": "Water Supply", "priority": "High"},
-    "Power Cut": {"department": "Electricity", "priority": "High"},
-    "Pothole": {"department": "Roads", "priority": "Medium"},
-    "Road Damage": {"department": "Roads", "priority": "Medium"},
-    "Garbage": {"department": "Sanitation", "priority": "Low"}
+    "Leakage": {"department": "Water Supply Department", "priority": "High", "icon": "💧", "code": "WTR-LEAK"},
+    "Shortage": {"department": "Water Supply Department", "priority": "High", "icon": "🚰", "code": "WTR-SHORT"},
+    "Power Cut": {"department": "Electricity Board", "priority": "High", "icon": "⚡", "code": "ELE-CUT"},
+    "Pothole": {"department": "Roads & Infrastructure", "priority": "Medium", "icon": "🛣️", "code": "RD-POT"},
+    "Road Damage": {"department": "Roads & Infrastructure", "priority": "Medium", "icon": "🧱", "code": "RD-DMG"},
+    "Garbage": {"department": "Sanitation & Solid Waste", "priority": "Low", "icon": "🗑️", "code": "SAN-GARB"}
 }
 
+SAMPLE_COMPLAINTS = {
+    "💧 Water Leakage": "Major pipeline burst near MG Road market, water gushing profusely onto the main street for hours.",
+    "🚰 Water Shortage": "No water supply in Ward 7 for the past 3 days, residents facing severe crisis with dry taps.",
+    "⚡ Power Outage": "Continuous unscheduled power cut in Sector 15 for over 5 hours during intense summer heat.",
+    "🛣️ Dangerous Pothole": "Deep pothole near the railway station entrance causing severe vehicle damage and traffic jams.",
+    "🧱 Road Damage": "The main avenue road surface near the hospital is cracked and crumbling, creating a major hazard.",
+    "🗑️ Overflowing Garbage": "Community dustbin at Sector 3 is overflowing with uncollected household waste and foul smell."
+}
+
+# Custom Premium Styling
+st.markdown("""
+<style>
+    /* Global Styling */
+    .stApp {
+        background-color: #0d1117;
+        color: #c9d1d9;
+    }
+    
+    /* Header Card */
+    .header-box {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .header-title {
+        color: #60a5fa;
+        font-size: 28px;
+        font-weight: 800;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .header-subtitle {
+        color: #9ca3af;
+        font-size: 15px;
+    }
+
+    /* Result Card Styling */
+    .res-card {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 18px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .res-label {
+        font-size: 13px;
+        color: #8b949e;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    .res-val {
+        font-size: 22px;
+        font-weight: 700;
+        color: #f0f6fc;
+    }
+
+    /* Ticket Box Styling */
+    .ticket-box {
+        background-color: #0d1117;
+        border: 2px dashed #30363d;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    .ticket-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #30363d;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .ticket-id {
+        font-family: monospace;
+        font-weight: bold;
+        color: #38bdf8;
+        font-size: 18px;
+    }
+
+    /* Badge Pills */
+    .badge-high {
+        background-color: rgba(220, 38, 38, 0.2);
+        color: #f87171;
+        border: 1px solid #ef4444;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .badge-medium {
+        background-color: rgba(217, 119, 6, 0.2);
+        color: #fbbf24;
+        border: 1px solid #f59e0b;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    .badge-low {
+        background-color: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border: 1px solid #10b981;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 14px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
 @st.cache_resource
-def load_prediction_model():
-    """Load the model and tokenizer once."""
+def load_model_artifacts():
+    """Load trained Keras 1D CNN model & tokenizers."""
     try:
         model = load_model(os.path.join(MODELS_DIR, "cnn_category_model.keras"))
         tokenizer = joblib.load(os.path.join(MODELS_DIR, "cnn_tokenizer.pkl"))
@@ -41,153 +174,301 @@ def load_prediction_model():
         config = joblib.load(os.path.join(MODELS_DIR, "cnn_config.pkl"))
         return model, tokenizer, label_encoder, config
     except Exception as e:
-        st.error(f"Error loading model: {e}")
+        st.error(f"Error loading AI model artifacts: {e}")
         return None, None, None, None
 
+
+@st.cache_data
+def load_dataset():
+    """Load dataset for analytics tab."""
+    csv_path = os.path.join(DATA_DIR, "municipal_complaints_clean.csv")
+    if os.path.exists(csv_path):
+        return pd.read_csv(csv_path)
+    return None
+
+
 def clean_text(text):
-    """Clean and normalize input text."""
+    """Normalize input complaint text."""
     text = str(text).lower()
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[^a-z0-9.,!? ]", "", text)
     return text.strip()
 
+
 def correct_spelling(text):
-    """Correct spelling using pyspellchecker with repeated char reduction."""
+    """Spell correction with 3+ repeated char reduction."""
     spell = SpellChecker()
-    # Reduce repeated chars pattern (e.g. "gaaarbbbage" -> "gaarbbbage")
-    # Actually, we want to reduce ANY run of 3+ same chars to 2 chars.
-    # regex: (.)\1+ matches a char followed by itself 1 or more times.
-    # But we want to keep 2 if there are 3+.
-    # Simpler approach from testing: re.sub(r'(.)\1+', r'\1\1', text) 
-    # This turns "aaa" -> "aa", "bb" -> "bb".
-    text = re.sub(r'(.)\1+', r'\1\1', text)
+    # Reduce 3 or more repeated characters to max 2 (e.g., "gaaarbbbage" -> "garbage")
+    text_reduced = re.sub(r'(.)\1{2,}', r'\1', text)
     
-    words = text.split()
+    words = text_reduced.split()
     corrected_words = []
     
     for word in words:
-        # Get the one `most likely` answer. 
-        # spell.correction returns None if word is unknown and no correction found, 
-        # or the word itself if it's known.
-        # Actually spell.correction(word) checks if it needs correction.
-        # If word is in dictionary, it returns the word.
-        corrected = spell.correction(word)
-        if corrected:
-            corrected_words.append(corrected)
+        # Keep punctuation intact for lookup
+        clean_w = re.sub(r'[^a-z0-9]', '', word)
+        if len(clean_w) > 2:
+            corrected = spell.correction(clean_w)
+            if corrected and corrected != clean_w:
+                # Replace root while preserving surrounding symbols if any
+                corrected_words.append(word.replace(clean_w, corrected))
+            else:
+                corrected_words.append(word)
         else:
             corrected_words.append(word)
             
     return " ".join(corrected_words)
 
+
 def main():
-    st.title("Municipal Complaint Classifier")
+    # Header Banner
+    st.markdown("""
+    <div class="header-box">
+        <div class="header-title">
+            🏛️ Municipal Complaint Classifier & Smart Dispatch Engine
+        </div>
+        <div class="header-subtitle">
+            Automated Deep Learning (1D CNN + NLP Pipeline) for Citizen Grievance Categorization, Department Assignment & Urgent Priority Routing
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Load resources
-    model, tokenizer, label_encoder, config = load_prediction_model()
+    # Load Model
+    model, tokenizer, label_encoder, config = load_model_artifacts()
 
-    if not model:
-        st.warning("Could not load model. Please ensure the model files are in the 'models/' directory.")
+    if model is None:
+        st.error("Failed to load model. Please run `python src/train.py` first.")
         return
 
-    # User Input
-    with st.container():
-        complaint_text = st.text_area("Describe the issue:", height=150, placeholder="e.g., There is a huge pothole on Main Street causing traffic.")
+    # Tabs
+    tab_classifier, tab_analytics, tab_arch = st.tabs([
+        "🚀 Live Grievance Classifier", 
+        "📊 Municipal Workload Analytics", 
+        "🛠️ DL Model & NLP Architecture"
+    ])
 
-        if st.button("Classify Complaint", type="primary"):
-            if not complaint_text.strip():
-                st.warning("Please enter a complaint description.")
-            else:
-                with st.spinner("Analyzing..."):
-                    # Preprocess
-                    # Spell Check
-                    corrected_text = correct_spelling(complaint_text)
-                    if corrected_text.lower() != complaint_text.lower():
-                        st.info(f"**Spelling Corrected:** {corrected_text}")
+    # ==========================================
+    # TAB 1: LIVE CLASSIFIER
+    # ==========================================
+    with tab_classifier:
+        col_left, col_right = st.columns([1.1, 0.9], gap="large")
+
+        with col_left:
+            st.subheader("📝 Submit Citizen Grievance")
+            
+            # Quick Sample Selection
+            st.markdown("**Try a sample complaint scenario:**")
+            selected_sample = st.selectbox(
+                "Choose sample preset:",
+                ["-- Select Sample Preset --"] + list(SAMPLE_COMPLAINTS.keys()),
+                label_visibility="collapsed"
+            )
+            
+            default_text = ""
+            if selected_sample != "-- Select Sample Preset --":
+                default_text = SAMPLE_COMPLAINTS[selected_sample]
+
+            complaint_input = st.text_area(
+                "Enter Complaint Description:",
+                value=default_text,
+                height=140,
+                placeholder="Describe the issue in detail (e.g. Heavy water leakage near Shastri Nagar market, road is flooded...)"
+            )
+
+            c_btn1, c_btn2 = st.columns([1, 1])
+            with c_btn1:
+                classify_clicked = st.button("⚡ Classify & Dispatch Ticket", type="primary", use_container_width=True)
+            with c_btn2:
+                if st.button("🧹 Clear Input", use_container_width=True):
+                    st.rerun()
+
+        with col_right:
+            st.subheader("🎯 Real-Time Analysis & Routing")
+
+            if classify_clicked and complaint_input.strip():
+                with st.spinner("Processing NLP pipeline & 1D CNN Inference..."):
+                    # 1. Spell Check & Cleaning
+                    corrected_text = correct_spelling(complaint_input)
+                    has_spelling_diff = corrected_text.lower() != complaint_input.lower()
                     
                     cleaned = clean_text(corrected_text)
+                    
+                    # 2. Tokenize & Pad
                     sequence = tokenizer.texts_to_sequences([cleaned])
-                    padded = pad_sequences(sequence, maxlen=config["max_sequence_length"], 
-                                         padding="post", truncating="post")
-                    
-                    # Predict
-                    prediction = model.predict(padded, verbose=0)
-                    predicted_class = np.argmax(prediction, axis=1)[0]
-                    confidence = float(np.max(prediction)) * 100
-                    
-                    category = label_encoder.inverse_transform([predicted_class])[0]
-                    info = CATEGORY_INFO.get(category, {"department": "Unknown", "priority": "Unknown"})
+                    padded = pad_sequences(
+                        sequence, 
+                        maxlen=config["max_sequence_length"], 
+                        padding="post", 
+                        truncating="post"
+                    )
 
-                    # Display Results
-                    st.divider()
+                    # 3. Model Inference
+                    prediction = model.predict(padded, verbose=0)[0]
+                    predicted_class_idx = int(np.argmax(prediction))
+                    confidence_pct = float(prediction[predicted_class_idx]) * 100
+                    category_name = label_encoder.inverse_transform([predicted_class_idx])[0]
                     
-                    # Custom CSS for cards
-                    st.markdown("""
-                    <style>
-                    .metric-card {
-                        background-color: #0e1117;
-                        border: 1px solid #262730;
-                        padding: 20px;
-                        border-radius: 10px;
-                        text-align: center;
+                    info = CATEGORY_INFO.get(
+                        category_name, 
+                        {"department": "General Administration", "priority": "Medium", "icon": "❓", "code": "GEN"}
+                    )
+
+                    # Display Spell Correction Notice if any
+                    if has_spelling_diff:
+                        st.info(f"✨ **Smart Spell Correction Applied:**\n*{corrected_text}*")
+
+                    # Display Metric Cards
+                    m1, m2, m3 = st.columns(3)
+                    with m1:
+                        st.markdown(f"""
+                        <div class="res-card">
+                            <div class="res-label">Category</div>
+                            <div class="res-val">{info['icon']} {category_name}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with m2:
+                        st.markdown(f"""
+                        <div class="res-card">
+                            <div class="res-label">Department</div>
+                            <div class="res-val" style="font-size: 16px; color: #38bdf8;">{info['department']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    with m3:
+                        badge_cls = f"badge-{info['priority'].lower()}"
+                        st.markdown(f"""
+                        <div class="res-card">
+                            <div class="res-label">Priority Level</div>
+                            <div style="margin-top: 6px;"><span class="{badge_cls}">{info['priority'].upper()}</span></div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.progress(confidence_pct / 100.0, text=f"AI Model Confidence: {confidence_pct:.2f}%")
+
+                    # Category Probabilities Chart
+                    st.markdown("**Softmax Class Probability Distribution:**")
+                    prob_df = pd.DataFrame({
+                        "Category": label_encoder.classes_,
+                        "Probability (%)": [round(float(p) * 100, 2) for p in prediction]
+                    }).sort_values(by="Probability (%)", ascending=True)
+                    
+                    st.bar_chart(prob_df, x="Category", y="Probability (%)", color="#38bdf8", height=200)
+
+                    # Generate Ticket Receipt Card
+                    ticket_number = f"MPR-{datetime.datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+                    timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
+                    
+                    ticket_json = {
+                        "ticket_id": ticket_number,
+                        "timestamp": timestamp_str,
+                        "complaint_text": complaint_input,
+                        "corrected_text": corrected_text,
+                        "category": category_name,
+                        "department": info["department"],
+                        "priority": info["priority"],
+                        "confidence": f"{confidence_pct:.2f}%",
+                        "status": "DISPATCHED_TO_FIELD_UNIT"
                     }
-                    .metric-label {
-                        font-size: 14px;
-                        color: #fafafa;
-                        margin-bottom: 5px;
-                    }
-                    .metric-value {
-                        font-size: 24px;
-                        font-weight: bold;
-                    }
-                    </style>
+
+                    st.markdown(f"""
+                    <div class="ticket-box">
+                        <div class="ticket-header">
+                            <div class="ticket-id">🎫 Ticket ID: {ticket_number}</div>
+                            <div style="color: #10b981; font-size: 13px; font-weight: bold;">STATUS: DISPATCHED</div>
+                        </div>
+                        <div style="font-size: 13px; color: #9ca3af; margin-bottom: 8px;">
+                            <b>Assigned Unit:</b> {info['department']} | <b>Code:</b> {info['code']}
+                        </div>
+                        <div style="font-size: 13px; color: #9ca3af;">
+                            <b>Created At:</b> {timestamp_str}
+                        </div>
+                    </div>
                     """, unsafe_allow_html=True)
 
-                    c1, c2, c3 = st.columns(3)
-                    
-                    priority_color = "#28a745"  # Green
-                    if info['priority'] == "Medium":
-                        priority_color = "#ffc107" # Amber
-                    elif info['priority'] == "High":
-                        priority_color = "#dc3545" # Red
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.download_button(
+                        label="📥 Download Official Dispatch Ticket (JSON)",
+                        data=json.dumps(ticket_json, indent=2),
+                        file_name=f"{ticket_number}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
 
-                    with c1:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-label">Category</div>
-                            <div class="metric-value">{category}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                    with c2:
-                        st.markdown(f"""
-                        <div class="metric-card">
-                            <div class="metric-label">Department</div>
-                            <div class="metric-value">{info['department']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                    with c3:
-                        st.markdown(f"""
-                        <div class="metric-card" style="border-color: {priority_color};">
-                            <div class="metric-label">Priority</div>
-                            <div class="metric-value" style="color: {priority_color};">{info['priority']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    st.divider()
-                    st.progress(confidence / 100, text=f"Confidence: {confidence:.2f}%")
-                    
-                    # Contextual Message
-                    if info['priority'] == "High":
-                        st.error("This is a high-priority issue. A ticket has been raised immediately.")
-                    elif info['priority'] == "Medium":
-                        st.warning("This issue has been logged for review.")
-                    else:
-                        st.info("Thank you for your feedback. We will attend to it shortly.")
+            elif classify_clicked and not complaint_input.strip():
+                st.warning("⚠️ Please enter a complaint description before classifying.")
+            else:
+                st.info("👈 Enter a complaint on the left or select a preset to analyze classification & ticket routing.")
 
-    # Footer
-    st.markdown("---")
-    st.caption("Powered by CNN & TensorFlow | Municipal Corporation Portal")
+    # ==========================================
+    # TAB 2: WORKLOAD ANALYTICS
+    # ==========================================
+    with tab_analytics:
+        st.subheader("📊 Dataset & Department Workload Analytics")
+        
+        df = load_dataset()
+        if df is not None:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Complaint Records", len(df))
+            with col2:
+                st.metric("Categories Tracked", df["category"].nunique())
+            with col3:
+                st.metric("Departments Managed", df["department"].nunique())
+            with col4:
+                high_p = len(df[df["priority"] == "High"])
+                st.metric("High-Priority Complaints", f"{high_p} ({high_p/len(df)*100:.1f}%)")
+
+            st.divider()
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("#### Complaints per Category")
+                cat_counts = df["category"].value_counts().reset_index()
+                cat_counts.columns = ["Category", "Count"]
+                st.bar_chart(cat_counts, x="Category", y="Count", color="#60a5fa")
+
+            with c2:
+                st.markdown("#### Workload by Municipal Department")
+                dept_counts = df["department"].value_counts().reset_index()
+                dept_counts.columns = ["Department", "Count"]
+                st.bar_chart(dept_counts, x="Department", y="Count", color="#34d399")
+
+            st.divider()
+            st.markdown("#### Sample Dataset Explorer")
+            st.dataframe(df[["complaint_text", "department", "category", "priority"]].head(25), use_container_width=True)
+        else:
+            st.error("Dataset `data/municipal_complaints_clean.csv` not found.")
+
+    # ==========================================
+    # TAB 3: ARCHITECTURE & SPECS
+    # ==========================================
+    with tab_arch:
+        st.subheader("🛠️ Deep Learning Architecture & NLP Pipeline")
+        
+        if os.path.exists(ARCH_IMAGE_PATH):
+            st.image(ARCH_IMAGE_PATH, caption="Municipal Complaint Classifier System Architecture", use_container_width=True)
+
+        st.markdown("""
+        ### Technical Model Specifications
+        - **Model Architecture**: 1D Convolutional Neural Network (CNN)
+        - **Embedding Layer**: 64-dimensional learned word embedding
+        - **Regularization**: `SpatialDropout1D` (rate=0.4), L2 Regularization (0.01), Batch Normalization, Dense Dropout (0.6)
+        - **Parallel Conv1D Filters**:
+          - Filter sizes: `[2, 3, 4]` (capturing bi-grams, tri-grams, and 4-grams)
+          - Number of filters per size: `64`
+        - **Pooling**: `GlobalMaxPooling1D` across parallel filter channels
+        - **Classification Output**: Softmax probabilities over 6 categories (Leakage, Shortage, Power Cut, Pothole, Road Damage, Garbage)
+        - **Validation Performance**: **92.54% Test Accuracy**
+        
+        ### NLP Preprocessing Pipeline
+        1. **Character Run Reduction**: Reduces 3+ consecutive duplicate characters to handle typos (e.g. `gaaarbbbage` → `garbage`).
+        2. **SymSpell / PySpellChecker**: Maps misspelled tokens to the nearest valid dictionary word.
+        3. **Normalization**: Lowercase conversion, non-alphanumeric character stripping.
+        4. **Tokenization & Padding**: Text sequences padded/truncated to `max_sequence_length = 60`.
+        """)
+
 
 if __name__ == "__main__":
     main()
