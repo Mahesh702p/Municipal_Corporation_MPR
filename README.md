@@ -95,22 +95,58 @@ The Web UI will be accessible locally at `http://localhost:8501`.
 
 ---
 
+## 🚀 450,000 Sample Multi-Task Deep Learning Pipeline (TextCNN + BiLSTM + Attention)
+
+To scale to city-wide municipal deployments, the engine features an upgraded **Multi-Task Architecture** trained on **450,000 complaint records** (100,000 labeled + 350,000 robust noisy Hinglish/ALL-CAPS records) on GPU across 20 epochs.
+
+### Multi-Task Model Features:
+- **Shared Representation**: Embedding Layer + Parallel 1D CNNs (bi/tri/4-grams) + Bidirectional LSTM + Custom Attention Mechanism.
+- **Dual Output Heads**:
+  1. **Department Classifier**: 9 Municipal Departments (*Health, Disaster, Revenue, Solid Waste, Water, Electricity, Sewerage, Parks, Roads*).
+  2. **Intent Detector**: 5 Intent Types (*Emergency, Complaint, Query, Service Request, Status Check*).
+
+### 📊 Multi-Task Model Performance (90,000 Unseen Test Set):
+- **Intent Detection Accuracy**: **100.00%** ($F1 = 1.00$ across all 5 intent classes)
+- **Department Routing Accuracy**: **82.87%** ($F1$ Scores: Health 0.93, Disaster 0.92, Revenue 0.84, Solid Waste 0.86, Water 0.85, Electricity 0.86)
+
+### 💻 Running Multi-Task Predictions
+```bash
+# Predict on single sentence (English / Hinglish)
+python3 src/predict_multitask.py "paani nahi aa raha hai subah se pipe phut gaya hai"
+
+# Output:
+# 🏛️ Department : WATER_SUPPLY (100.00%)
+# 🎯 Intent     : COMPLAINT (100.00%)
+
+# Interactive mode prompt:
+python3 src/predict_multitask.py
+```
+
+---
+
 ## 📂 Project Structure
 
 ```
 Municipal_Corporation_MPR/
 ├── data/
-│   └── municipal_complaints_clean.csv   # Dataset (1,943 records)
+│   ├── municipal_complaints_clean.csv   # Prototype Dataset (1,943 records)
+│   ├── complaints_labeled.csv           # Clean Dataset (100,000 records)
+│   └── complaints_robust.csv            # Robust Noisy Dataset (350,000 records)
 ├── models/
-│   ├── cnn_category_model.keras        # Trained Keras 1D CNN model
-│   ├── cnn_tokenizer.pkl               # Tokenizer vocabulary artifact
-│   ├── cnn_label_encoder.pkl           # Category Label Encoder artifact
-│   └── cnn_config.pkl                  # Hyperparameter configuration
+│   ├── cnn_category_model.keras        # Single-task Keras 1D CNN model
+│   └── cnn_tokenizer.pkl               # Single-task Tokenizer
+├── Municipal_Multitask_Results/         # 450k Colab GPU Model Artifacts & Metrics
+│   ├── multitask_model.keras           # Trained Dual-Head Multi-Task Model
+│   ├── multitask_tokenizer.pkl         # Subword Tokenizer
+│   ├── dept_encoder.pkl / intent_encoder.pkl
+│   ├── summary.json                    # Full evaluation metrics
+│   ├── training_history.png            # Training curves
+│   └── confusion_matrices.png          # Heatmap plots
 ├── src/
 │   ├── app.py                          # Streamlit Web Application & Dashboard
-│   ├── predict.py                      # CLI & Standalone Prediction Engine
-│   └── train.py                        # Model Training & Evaluation Pipeline
-├── architecture_diagram.png            # Visual System Architecture Flow
+│   ├── predict.py                      # Single-Task Prediction CLI
+│   ├── predict_multitask.py            # Multi-Task 450k Model Prediction Engine
+│   └── train_multitask.py              # Multi-Task Training Script
 ├── requirements.txt                    # Project Python Dependencies
 └── README.md                           # Documentation
 ```
@@ -122,3 +158,4 @@ Municipal_Corporation_MPR/
 Contributions are welcome! Please feel free to open an Issue or submit a Pull Request.
 
 This project is open-source under the [MIT License](LICENSE).
+

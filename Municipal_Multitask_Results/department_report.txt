@@ -1,0 +1,17 @@
+Department Accuracy: 0.8287
+
+                     precision    recall  f1-score   support
+
+disaster_management       1.00      0.85      0.92     13497
+        electricity       1.00      0.76      0.86      7788
+             health       1.00      0.86      0.93     13968
+              parks       1.00      0.64      0.78      5402
+            revenue       0.80      0.89      0.84     13850
+              roads       0.45      0.93      0.60      8808
+           sewerage       0.95      0.70      0.81      6439
+        solid_waste       0.87      0.85      0.86     12088
+       water_supply       0.94      0.77      0.85      8160
+
+           accuracy                           0.83     90000
+          macro avg       0.89      0.81      0.83     90000
+       weighted avg       0.89      0.83      0.84     90000

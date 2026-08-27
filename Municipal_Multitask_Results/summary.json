@@ -1,0 +1,26 @@
+{
+  "total_dataset_size": 450000,
+  "train_samples": 360000,
+  "test_samples": 90000,
+  "epochs_trained": 20,
+  "department_accuracy": 0.8287,
+  "intent_accuracy": 1.0,
+  "department_classes": [
+    "disaster_management",
+    "electricity",
+    "health",
+    "parks",
+    "revenue",
+    "roads",
+    "sewerage",
+    "solid_waste",
+    "water_supply"
+  ],
+  "intent_classes": [
+    "complaint",
+    "emergency",
+    "query",
+    "service_request",
+    "status_check"
+  ]
+}

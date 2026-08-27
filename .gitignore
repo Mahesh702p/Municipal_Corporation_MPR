@@ -20,5 +20,7 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Logs
+# Logs & Archives
 *.log
+*.zip
+models_multitask/

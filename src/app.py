@@ -36,7 +36,19 @@ MODELS_DIR = os.path.join(PROJECT_DIR, "models")
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 ARCH_IMAGE_PATH = os.path.join(PROJECT_DIR, "architecture_diagram.png")
 
+# Comprehensive Category / Department Mapping for both Clean & Labeled Datasets
 CATEGORY_INFO = {
+    "water_supply": {"department": "Water Supply Department", "priority": "High", "icon": "🚰", "code": "WTR"},
+    "electricity": {"department": "Electricity Board", "priority": "High", "icon": "⚡", "code": "ELE"},
+    "disaster_management": {"department": "Disaster & Emergency Services", "priority": "High", "icon": "🚨", "code": "EMG"},
+    "sewerage": {"department": "Sewerage & Drainage", "priority": "High", "icon": "🌊", "code": "SEW"},
+    "roads": {"department": "Roads & Infrastructure", "priority": "Medium", "icon": "🛣️", "code": "RD"},
+    "solid_waste": {"department": "Sanitation & Solid Waste", "priority": "Medium", "icon": "🗑️", "code": "SAN"},
+    "health": {"department": "Public Health & Sanitation", "priority": "Medium", "icon": "🏥", "code": "HLT"},
+    "revenue": {"department": "Revenue & Property Tax", "priority": "Low", "icon": "📑", "code": "REV"},
+    "parks": {"department": "Parks & Recreation", "priority": "Low", "icon": "🌳", "code": "PRK"},
+
+    # Clean Dataset Categories
     "Leakage": {"department": "Water Supply Department", "priority": "High", "icon": "💧", "code": "WTR-LEAK"},
     "Shortage": {"department": "Water Supply Department", "priority": "High", "icon": "🚰", "code": "WTR-SHORT"},
     "Power Cut": {"department": "Electricity Board", "priority": "High", "icon": "⚡", "code": "ELE-CUT"},
@@ -46,19 +58,19 @@ CATEGORY_INFO = {
 }
 
 SAMPLE_COMPLAINTS = {
-    "💧 Water Leakage": "Major pipeline burst near MG Road market, water gushing profusely onto the main street for hours.",
-    "🚰 Water Shortage": "No water supply in Ward 7 for the past 3 days, residents facing severe crisis with dry taps.",
-    "⚡ Power Outage": "Continuous unscheduled power cut in Sector 15 for over 5 hours during intense summer heat.",
-    "🛣️ Dangerous Pothole": "Deep pothole near the railway station entrance causing severe vehicle damage and traffic jams.",
-    "🧱 Road Damage": "The main avenue road surface near the hospital is cracked and crumbling, creating a major hazard.",
-    "🗑️ Overflowing Garbage": "Community dustbin at Sector 3 is overflowing with uncollected household waste and foul smell."
+    "💧 Water Shortage (Hinglish)": "paani nai aaraha teen dino se ghar me severe crisis hai",
+    "⚡ Power Outage (Hinglish)": "bijli chali gayi hai poore sector 15 me bohot garmi hai",
+    "🛣️ Pothole Issue (Hinglish)": "main sadak par bada gadda hai traffic jam ho raha hai",
+    "🗑️ Garbage Problem (Hinglish)": "gali me kachra pada hai 4 dino se koi nahi aaya",
+    "🚨 Emergency Disaster": "massive fire outbreak near transformer behind society",
+    "🚰 Water Supply (English)": "No drinking water supply in Ward 7 for past 3 days"
 }
 
 # Common Hinglish / Transliterated Indian keywords to preserve
 HINGLISH_KEYWORDS = [
     "paani", "pani", "ghar", "bijli", "sadak", "kachra", "naali", "gadda", 
     "safai", "dino", "aaraha", "araha", "aa", "raha", "me", "se", "nai", 
-    "nhi", "kaafi", "bhi", "bohot", "bahut", "gali", "mora", "pani", "light"
+    "nhi", "kaafi", "bhi", "bohot", "bahut", "gali", "mora", "pani", "light", "teen"
 ]
 
 # Custom Premium Styling
@@ -188,9 +200,10 @@ def load_model_artifacts():
 @st.cache_data
 def load_dataset():
     """Load dataset for analytics tab."""
-    csv_path = os.path.join(DATA_DIR, "municipal_complaints_clean.csv")
-    if os.path.exists(csv_path):
-        return pd.read_csv(csv_path)
+    for fn in ["complaints_labeled.csv", "municipal_complaints_clean.csv"]:
+        csv_path = os.path.join(DATA_DIR, fn)
+        if os.path.exists(csv_path):
+            return pd.read_csv(csv_path)
     return None
 
 
@@ -225,7 +238,7 @@ def correct_spelling(text):
     spell = SpellChecker()
     spell.word_frequency.load_words(HINGLISH_KEYWORDS)
     
-    # Reduce 3 or more repeated characters (e.g., "paaaani" -> "paani", "heeeelp" -> "help")
+    # Reduce 3 or more repeated characters
     text_reduced = re.sub(r'(.)\1{2,}', r'\1', text)
     
     words = text_reduced.split()
@@ -234,13 +247,11 @@ def correct_spelling(text):
     for word in words:
         clean_w = re.sub(r'[^a-z0-9]', '', word.lower())
         if len(clean_w) > 3:
-            # If word is known in English or Hinglish dictionary, keep it as is
             if clean_w in spell.known([clean_w]):
                 corrected_words.append(word)
             else:
                 candidate = spell.correction(clean_w)
                 if candidate and candidate != clean_w:
-                    # Strict distance check (max 1 edit) to prevent mangling transliterated words
                     if edit_distance(clean_w, candidate) <= 1:
                         corrected_words.append(word.replace(clean_w, candidate))
                     else:
@@ -305,10 +316,10 @@ def main():
                 "Enter Complaint Description:",
                 value=default_text,
                 height=130,
-                placeholder="Describe the issue in detail (e.g. Heavy water leakage near Shastri Nagar market, road is flooded...)"
+                placeholder="Describe the issue in detail (e.g. paani nai aaraha teen dino se, severe leak near MG road...)"
             )
 
-            st.caption("💡 **Tip**: *For optimal accuracy, enter complaints in English (e.g. 'no water supply for 3 days', 'huge pothole on main road'). Hinglish words like 'paani', 'ghar', 'bijli' are safely preserved.*")
+            st.caption("💡 **Tip**: *Supports both Hinglish (e.g. 'paani nai aaraha', 'bijli chali gayi') and English complaints.*")
 
             c_chk, c_empty = st.columns([1.2, 0.8])
             with c_chk:
@@ -348,12 +359,19 @@ def main():
                     prediction = model.predict(padded, verbose=0)[0]
                     predicted_class_idx = int(np.argmax(prediction))
                     confidence_pct = float(prediction[predicted_class_idx]) * 100
-                    category_name = label_encoder.inverse_transform([predicted_class_idx])[0]
+                    raw_category = label_encoder.inverse_transform([predicted_class_idx])[0]
                     
                     info = CATEGORY_INFO.get(
-                        category_name, 
-                        {"department": "General Administration", "priority": "Medium", "icon": "❓", "code": "GEN"}
+                        raw_category, 
+                        {
+                            "department": raw_category.replace("_", " ").title() + " Department", 
+                            "priority": "Medium", 
+                            "icon": "🏛️", 
+                            "code": raw_category[:3].upper()
+                        }
                     )
+
+                    category_display = raw_category.replace("_", " ").title()
 
                     # Display Spell Correction Notice if any
                     if has_spelling_diff:
@@ -364,15 +382,15 @@ def main():
                     with m1:
                         st.markdown(f"""
                         <div class="res-card">
-                            <div class="res-label">Category</div>
-                            <div class="res-val">{info['icon']} {category_name}</div>
+                            <div class="res-label">Category / Dept</div>
+                            <div class="res-val">{info['icon']} {category_display}</div>
                         </div>
                         """, unsafe_allow_html=True)
                         
                     with m2:
                         st.markdown(f"""
                         <div class="res-card">
-                            <div class="res-label">Department</div>
+                            <div class="res-label">Assigned Unit</div>
                             <div class="res-val" style="font-size: 16px; color: #38bdf8;">{info['department']}</div>
                         </div>
                         """, unsafe_allow_html=True)
@@ -392,7 +410,7 @@ def main():
                     # Category Probabilities Chart
                     st.markdown("**Softmax Class Probability Distribution:**")
                     prob_df = pd.DataFrame({
-                        "Category": label_encoder.classes_,
+                        "Category": [c.replace("_", " ").title() for c in label_encoder.classes_],
                         "Probability (%)": [round(float(p) * 100, 2) for p in prediction]
                     }).sort_values(by="Probability (%)", ascending=True)
                     
@@ -407,7 +425,7 @@ def main():
                         "timestamp": timestamp_str,
                         "complaint_text": complaint_input,
                         "processed_text": corrected_text,
-                        "category": category_name,
+                        "category": category_display,
                         "department": info["department"],
                         "priority": info["priority"],
                         "confidence": f"{confidence_pct:.2f}%",
@@ -451,37 +469,44 @@ def main():
         
         df = load_dataset()
         if df is not None:
+            col_target = "department" if "department" in df.columns else "category"
+            col_text = "text" if "text" in df.columns else "complaint_text"
+            
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("Total Complaint Records", len(df))
+                st.metric("Total Dataset Records", f"{len(df):,}")
             with col2:
-                st.metric("Categories Tracked", df["category"].nunique())
+                st.metric("Departments / Categories", df[col_target].nunique())
             with col3:
-                st.metric("Departments Managed", df["department"].nunique())
+                st.metric("Languages Supported", "Hinglish + English")
             with col4:
-                high_p = len(df[df["priority"] == "High"])
-                st.metric("High-Priority Complaints", f"{high_p} ({high_p/len(df)*100:.1f}%)")
+                st.metric("Model Architecture", "1D CNN Multi-Scale")
 
             st.divider()
 
             c1, c2 = st.columns(2)
             with c1:
-                st.markdown("#### Complaints per Category")
-                cat_counts = df["category"].value_counts().reset_index()
-                cat_counts.columns = ["Category", "Count"]
-                st.bar_chart(cat_counts, x="Category", y="Count", color="#60a5fa")
+                st.markdown("#### Complaints per Department")
+                cat_counts = df[col_target].value_counts().reset_index()
+                cat_counts.columns = ["Department", "Count"]
+                st.bar_chart(cat_counts, x="Department", y="Count", color="#60a5fa")
 
             with c2:
-                st.markdown("#### Workload by Municipal Department")
-                dept_counts = df["department"].value_counts().reset_index()
-                dept_counts.columns = ["Department", "Count"]
-                st.bar_chart(dept_counts, x="Department", y="Count", color="#34d399")
+                st.markdown("#### Intent Distribution" if "intent" in df.columns else "#### Department Workload")
+                if "intent" in df.columns:
+                    intent_counts = df["intent"].value_counts().reset_index()
+                    intent_counts.columns = ["Intent", "Count"]
+                    st.bar_chart(intent_counts, x="Intent", y="Count", color="#34d399")
+                else:
+                    dept_counts = df[col_target].value_counts().reset_index()
+                    dept_counts.columns = ["Department", "Count"]
+                    st.bar_chart(dept_counts, x="Department", y="Count", color="#34d399")
 
             st.divider()
             st.markdown("#### Sample Dataset Explorer")
-            st.dataframe(df[["complaint_text", "department", "category", "priority"]].head(25), use_container_width=True)
+            st.dataframe(df[[col_text, col_target]].head(25), use_container_width=True)
         else:
-            st.error("Dataset `data/municipal_complaints_clean.csv` not found.")
+            st.error("Dataset not found in `data/`.")
 
     # ==========================================
     # TAB 3: ARCHITECTURE & SPECS
@@ -501,14 +526,12 @@ def main():
           - Filter sizes: `[2, 3, 4]` (capturing bi-grams, tri-grams, and 4-grams)
           - Number of filters per size: `64`
         - **Pooling**: `GlobalMaxPooling1D` across parallel filter channels
-        - **Classification Output**: Softmax probabilities over 6 categories (Leakage, Shortage, Power Cut, Pothole, Road Damage, Garbage)
-        - **Validation Performance**: **92.54% Test Accuracy**
+        - **Dataset Scale**: **100,000 Multi-Lingual Complaints** (`complaints_labeled.csv`)
         
-        ### NLP Preprocessing Pipeline
-        1. **Character Run Reduction**: Reduces 3+ consecutive duplicate characters to handle typos (e.g. `gaaarbbbage` → `garbage`).
-        2. **Hinglish & Vocabulary Protection**: Preserves transliterated keywords (`paani`, `ghar`, `bijli`, `sadak`, `naali`) and enforces a max edit distance of 1 to prevent word corruption.
-        3. **Normalization**: Lowercase conversion, non-alphanumeric character stripping.
-        4. **Tokenization & Padding**: Text sequences padded/truncated to `max_sequence_length = 60`.
+        ### Preprocessing Pipeline
+        1. **Character Run Reduction**: Reduces 3+ consecutive duplicate characters (e.g. `paaaani` → `paani`).
+        2. **Hinglish Vocabulary Protection**: Preserves transliterated keywords (`paani`, `ghar`, `bijli`, `sadak`, `naali`) and enforces max edit distance of 1.
+        3. **Tokenization & Padding**: Text sequences padded/truncated to `max_sequence_length = 60`.
         """)
 
 
